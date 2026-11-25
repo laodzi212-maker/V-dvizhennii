@@ -137,6 +137,24 @@ def check_text(text, name="stdin", path=None):
         for m in re.finditer(rule["pattern"], text, re.I):
             add("error", "stale", f"«{m.group(0)}»: {rule['why']}", m.start())
 
+    # предупреждения (нужно уточнение, но не запрет)
+    for rule in FACTS.get("warn_patterns", []):
+        if rule.get("check") == "claims":
+            for m in re.finditer(rule["pattern"], text, re.I):
+                nums = re.findall(r"\d+", m.group(0))
+                if int(nums[0]) != FACTS["claims"]["retreats"] or int(nums[1]) != FACTS["claims"]["countries"]:
+                    add("error", "claims", f"«{m.group(0)}»: верно 18 ретритов в 5 странах", m.start())
+            continue
+        for m in re.finditer(rule["pattern"], text, re.I):
+            add("warn", "warn", f"«{m.group(0)}»: {rule['why']}", m.start())
+
+    # иностранные слова: только русский язык в текстах для публикации
+    allow = {"instagram","telegram","youtube","metricool","atlantum","whatsapp","reels","ok","pdf"}
+    if path is None or path.suffix.lower() in (".txt", ".md", ".srt", ".ass"):
+        for m in re.finditer(r"(?<![\w./@-])[A-Za-z]{3,}(?![\w./@-])", text):
+            if m.group(0).lower() not in allow:
+                add("warn", "latin", f"«{m.group(0)}»: иностранное слово, по возможности по-русски", m.start())
+
     # конфликты между документами
     conflicts = {c["id"]: c for c in FACTS["conflicts"]}
     conflict_hits = set()
